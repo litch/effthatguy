@@ -8,11 +8,12 @@ datastore_key = ['effthatguy', 'descriptors']
 @plugin.method("effthatguy")
 def effthatguy(plugin, descriptor="", **kwargs):
     """
-    Register a descriptor to end your relationship with
-    The descriptor may be a peer_id (pubkey),
-    channel_id ("a2d0851832f0e30a0cf778a826d72f077ca86b69f72677e0267f23f63a0599b4")
-    or short_channel_id ("561820x1020x1")
+    Register a peer_id  to end your relationship with next
+    time they connect.
     """
+    if descriptor == "":
+        return plugin.descriptors
+
     # put the descriptor in the store
     plugin.log("Received descriptor {}".format(descriptor))
     descriptors = plugin.descriptors
@@ -22,6 +23,16 @@ def effthatguy(plugin, descriptor="", **kwargs):
     persist_descriptors(plugin)
 
     return descriptors
+
+@plugin.method("effthatguy-clear")
+def effthatguy_clear(plugin, **kwargs):
+    """
+    Clear the list of peer ids scheduled for closure
+    """
+    plugin.log("Clearing descriptors")
+    plugin.descriptors = []
+    persist_descriptors(plugin)
+    return plugin.descriptors
 
 def persist_descriptors(plugin):
     hexstr = pickle.dumps(plugin.descriptors).hex()
@@ -50,8 +61,7 @@ def init(options, configuration, plugin):
 
     if preloaded_descriptors:
         plugin.log("Preloaded descriptors {}".format(preloaded_descriptors))
-        datastore = preloaded_descriptors.get('datastore')
-        plugin.descriptors = datastore
+        plugin.descriptors = preloaded_descriptors
     else:
         plugin.log("No preloaded descriptors")
         plugin.descriptors = []
@@ -70,8 +80,11 @@ def on_connect(plugin: Plugin, **kwargs):
     connect = kwargs["connect"]
     plugin.log("Received connect {}".format(connect))
     descriptors = plugin.descriptors
+
+    matcher = connect.get("id")
+
     for descriptor in descriptors:
-        if descriptor == connect.get("id"):
+        if descriptor == matcher:
             plugin.log("Identified peer has connected, closing")
             channels = plugin.rpc.listpeerchannels(connect.get("id")).get("channels", [])
             for channel in channels:
@@ -84,6 +97,7 @@ def on_connect(plugin: Plugin, **kwargs):
 def close_channel(channel_id):
     plugin.log("Closing channel {}".format(channel_id))
     plugin.rpc.close(channel_id)
+
 
 plugin.run()
 

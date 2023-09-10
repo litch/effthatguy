@@ -6,4 +6,7 @@ Sometimes you have a channel with a peer and you really don't want to have that 
 
 The descriptor can be a peer alias, scid,
 
-effthatguy <descriptor>
+
+        $ effthatguy <descriptor>
+        [descriptor]
+
